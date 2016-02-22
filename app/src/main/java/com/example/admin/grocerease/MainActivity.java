@@ -35,6 +35,14 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         username = (EditText)findViewById(R.id.username);
         password = (EditText)findViewById(R.id.password);
+
+        final Firebase myFirebaseRef = new Firebase("https://grocerease.firebaseio.com/");
+        AuthData user = myFirebaseRef.getAuth();
+        if (user != null) {
+            Intent intent = new Intent(MainActivity.this, Dashboard.class);
+            startActivity(intent);
+            finish();
+        }
     }
 
 

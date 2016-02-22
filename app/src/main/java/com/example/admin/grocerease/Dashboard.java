@@ -1,5 +1,7 @@
 package com.example.admin.grocerease;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -31,6 +33,8 @@ public class Dashboard extends ActionBarActivity {
     ListView groceryList;
     ImageButton add;
     SimpleAdapter adapterL;
+    List<Map<String, String>> groceryData;
+    boolean loaded;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,17 +66,18 @@ public class Dashboard extends ActionBarActivity {
                     public void onDataChange(DataSnapshot gsnapshot) {
                         List<Map<String, String>> groceryData = new ArrayList<Map<String, String>>();
 
-                        if (arr2 != null) {
-                            for (String s : arr2) {
-                                Map<String, String> datum = new HashMap<String, String>(2);
-                                datum.put("title", gsnapshot.child(s).child("name").getValue().toString());
-                                datum.put("qty", "x" + gsnapshot.child(s).child("quantity").getValue().toString());
-                                groceryData.add(datum);
-                            }
-
-                            setGroceryList(groceryData);
+                        if (!loaded) {
+                            if (arr2 != null) {
+                                for (String s : arr2) {
+                                    Map<String, String> datum = new HashMap<String, String>(2);
+                                    datum.put("title", gsnapshot.child(s).child("name").getValue().toString());
+                                    datum.put("qty", "x" + gsnapshot.child(s).child("quantity").getValue().toString());
+                                    groceryData.add(datum);
+                                }
+                                setGroceryList(groceryData);
+                                loaded = true;
+                            } else none.setVisibility(View.VISIBLE);
                         }
-                        else none.setVisibility(View.VISIBLE);
 
                     }
 
@@ -116,6 +121,49 @@ public class Dashboard extends ActionBarActivity {
                 new String[]{"title", "qty"},
                 new int[]{android.R.id.text1, android.R.id.text2});
         groceryList.setAdapter(adapterL);
+        groceryList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapter, View v, int position,
+                                    long arg3) {
+                final int pos = position;
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(Dashboard.this);
+                alertDialogBuilder.setMessage("Delete item");
+
+                alertDialogBuilder.setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        final Firebase myRef = new Firebase("https://grocerease.firebaseio.com/users");
+                        myRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                            public void onDataChange(DataSnapshot snapshot) {
+                                AuthData user = myRef.getAuth();
+                                final String id = user.getUid();
+                                ArrayList<String> groceries = (ArrayList<String>) snapshot.child(id)
+                                        .child("groceryList").getValue();
+                                String gId = groceries.remove(pos);
+                                final Firebase gRef = new Firebase("https://grocerease.firebaseio.com/groceries");
+                                gRef.child(gId).setValue(null);
+                                myRef.child(id).child("groceryList").setValue(groceries);
+                            }
+
+                            public void onCancelled(FirebaseError firebaseError) {
+                            }
+                        });
+                        Intent intent = getIntent();
+                        finish();
+                        startActivity(intent);
+                    }
+                });
+
+                alertDialogBuilder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                });
+
+                AlertDialog alertDialog = alertDialogBuilder.create();
+                alertDialog.show();
+            }
+        });
     }
 
     private void setSpinner(ArrayList<String> arr) {
